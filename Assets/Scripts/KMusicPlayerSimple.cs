@@ -8,21 +8,25 @@ public class KMusicPlayerSimple : MonoBehaviour
 {
     public AudioSource audioSource;
     public AudioClip[] audioClips;
-
+    public KsoriAudioSource KsoriAudioSource;
     private void Awake()
     {
-        audioSource = GetComponent<AudioSource>();
+        
     }
-
+    private void Start()
+    {
+        audioSource = gameObject.GetComponent<AudioSource>();
+        KsoriAudioSource = new KsoriAudioSource(gameObject,audioSource,0);
+    }
     /// <summary>
     /// 음악 바꾸기
     /// </summary>
     /// <param name="num"> 음악 배열 번호 </param>
     public void ChageMusic(int num)
     {
-        audioSource.Stop();
-        audioSource.clip = audioClips[num];
-        audioSource.Play();
+        KsoriAudioSource.Stop();
+        KsoriAudioSource.clip = audioClips[num];
+        KsoriAudioSource.Play();
     }
 
     /// <summary>
@@ -30,8 +34,8 @@ public class KMusicPlayerSimple : MonoBehaviour
     /// </summary>
     public void PlayMusic()
     {
-        audioSource.Pause();
-        audioSource.Play();
+        KsoriAudioSource.Pause();
+        KsoriAudioSource.Play();
     }
 
     /// <summary>
@@ -39,7 +43,7 @@ public class KMusicPlayerSimple : MonoBehaviour
     /// </summary>
     public void StopMusic()
     {
-        audioSource.Stop();
+        KsoriAudioSource.Stop();
     }
 
     /// <summary>
@@ -47,7 +51,7 @@ public class KMusicPlayerSimple : MonoBehaviour
     /// </summary>
     public void PauseMusic()
     {
-        audioSource.Pause();
+        KsoriAudioSource.Pause();
     }
     
     public void GotoMainScene()

@@ -2,14 +2,16 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 6
+  serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: MT_Volumetric Light 7
-  m_Shader: {fileID: -6465566751694194690, guid: 3b468d5234d1c9644a716c681cb376b1, type: 3}
-  m_ShaderKeywords: 
+  m_Shader: {fileID: -6465566751694194690, guid: 3b468d5234d1c9644a716c681cb376b1,
+    type: 3}
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -31,11 +33,27 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    m_Ints: []
     m_Floats:
     - Boolean_4fba9af4131d45359d4eec977c6004dc: 0
     - Vector1_6153d34e01af4b00854bcd45767d5793: 0.13
     - Vector1_83250b71745c46d3bc2e9941c20d8952: 2.51
     - Vector1_c42369b45d73488fb9f434cadd2068ac: 300
+    - _QueueControl: 1
+    - _QueueOffset: 0
     m_Colors:
     - Color_6fbcf91eee974bc19af10bd8c204d903: {r: 1, g: 0.9685966, b: 0.8726415, a: 1}
   m_BuildTextureStacks: []
+--- !u!114 &3448945390356515734
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 5
