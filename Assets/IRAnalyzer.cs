@@ -10,15 +10,23 @@ using UnityEngine.Audio;
 public class IRAnalyzer : MonoBehaviour
 {
     [Header("리버브 세팅")]
-    public AudioMixer AudioMixer = null;
+    //public AudioMixer AudioMixer = null;
+    public GameObject Listener = null;
+    public GameObject Speaker = null;
     public AudioClip IR = null;
     public int TargetChannel = 0;
     public bool ReverbOn = true;
     [Range(-80, 40)]
     public float ReverbLevel = 0;
-    
-
-
+    [Range(-80, 0)]
+    public float EarlyReflectionLevel = -40;
+    [Range(1, 3)]
+    public int FreqResolution = 1;
+    [Range(1, 2)]
+    public float TimeResolution = 1;
+    [Range(0, 360)]
+    public float RayTracingResolution = 16;
+    public bool DrawRayTracingLine = true;
     float[] IRdata = null;
     float[][] IRArray = null;
     float[] SelectedIR = null;
@@ -53,12 +61,16 @@ public class IRAnalyzer : MonoBehaviour
     Dictionary<string, float> FreqDecayRT20 = new Dictionary<string, float>();
     Dictionary<string, float> FreqDecayGaindB = new Dictionary<string, float>();
     float PeakdB = 0;
-    int FFTLength = 8192;
+    int FFTLength = 2048;
+    float OverlapLength = 0.1f;
     bool OnOffsave;
     float ReverbLevelMemory = 0;
+    float ERLevelMemory = 0;
     // Start is called before the first frame update
     void Start()
     {
+        FFTLength = (int)Mathf.Pow(2,10+FreqResolution);
+        OverlapLength = 1f / (Mathf.Pow(10, TimeResolution));
         AnalyzeStart();
     }
     void AnalyzeStart()
@@ -79,7 +91,7 @@ public class IRAnalyzer : MonoBehaviour
         //GetLongFFT();
         //GetSchroederCurve();
         GetSTFT();
-        AudioMixer.SetFloat("Decay", Decay * 3);
+        KsoriAudioSource.ReverbEffectMixer.SetFloat("Decay", Decay * 3);
 
     }
     void InitAndImpulseSetting()
@@ -165,7 +177,7 @@ public class IRAnalyzer : MonoBehaviour
             }
             band[i] /= Oct1ToIndex - Oct0ToIndex;
             Info += string.Format("{0}Hz : {1}\n", Oct0, 20 * Mathf.Log10(band[i]));
-            AudioMixer.SetFloat(Oct0.ToString() + "Hz", band[i]);
+            KsoriAudioSource.ReverbEffectMixer.SetFloat(Oct0.ToString() + "Hz", band[i]);
         }
     }
     float[] STFTProcess(int FFTSize, int Offset)
@@ -190,7 +202,7 @@ public class IRAnalyzer : MonoBehaviour
     void GetSTFT()
     {
         int STFTSize = FFTLength;
-        float Resolution = 0.01f;
+        float Resolution = OverlapLength;
         int OverlapBlockSize = (int)(IRSamplerate * Resolution);
         int NumberOfBlock = (IRSamples - STFTSize) / OverlapBlockSize;
         STFT = new List<float[]>();
@@ -219,7 +231,7 @@ public class IRAnalyzer : MonoBehaviour
                 {
                     FreqDecay[Key][j] += STFT[j][k];
                 }
-                FreqDecay[Key][j] /= NumberOfBlock;// (Oct1ToIndex-Oct0ToIndex);
+                FreqDecay[Key][j] /= NumberOfBlock;// * (Oct1ToIndex-Oct0ToIndex);
             }
             float EnergySum = 0;
             float Sum = 0;
@@ -228,7 +240,7 @@ public class IRAnalyzer : MonoBehaviour
                 EnergySum += Math.Abs(FreqDecay[Key][j] * FreqDecay[Key][j]);
                 Sum += Math.Abs(FreqDecay[Key][j]);
                 FreqDecaySch[Key][j] = 10 * Mathf.Log10(EnergySum);
-                FreqDecay20dB[Key][j] = 20 * Mathf.Log10(Sum);
+                FreqDecay20dB[Key][j] = 10 * Mathf.Log10(Sum);
             }
             //StringBuilder stringBuilder = new StringBuilder();
             //for (int j = 0; j < FreqDecaySch[Key].Length; j++)
@@ -243,12 +255,12 @@ public class IRAnalyzer : MonoBehaviour
                     FreqDecayRT20[Key] = j * Resolution * 3;
                     //Debug.Log(string.Format("{0}Hz : {1}",Key,FreqDecayRT20[Key]));
                     if (FreqDecayRT20[Key] > 10) FreqDecayRT20[Key] = 0;
-                    AudioMixer.SetFloat(Key + "Hz", FreqDecayRT20[Key]);
+                    KsoriAudioSource.ReverbEffectMixer.SetFloat(Key + "Hz", FreqDecayRT20[Key]);
                     break;
                 }
             }
             FreqDecayGaindB[Key] = FreqDecayRT20[Key] <= 0 ? -80 : FreqDecay20dB[Key][0];
-            AudioMixer.SetFloat(Key + "Hz Gain", FreqDecayGaindB[Key]);
+            KsoriAudioSource.ReverbEffectMixer.SetFloat(Key + "Hz Gain", FreqDecayGaindB[Key]);
             //string Report = string.Format("{0}Hz : {1}초 {2}dB", Key, FreqDecayRT20[Key], FreqDecayGaindB[Key]);
             //Debug.Log(Report);
         }
@@ -304,20 +316,97 @@ public class IRAnalyzer : MonoBehaviour
         Magnitude = Mathf.Sqrt((CosValue * CosValue) + (SinValue * SinValue));
         return Magnitude;
     }
+
+    void SoundRayTracing()
+    {
+        GameObject Speaker = GameObject.Find("Sphere");
+        int VerticalVectorN = 360;
+        int HorizontalVectorN = 360;
+        float SumDistance = 0;
+        float NearWall = 0;
+        Vector3 WallVectorSum = new Vector3();
+        float StartTheta = 0;
+        float EndTheta = 360;
+        float StartPhi = 0;
+        float EndPhi = 360;
+        int NumberOfERVector = 0;
+        GameObject Listener = GameObject.Find("Sphere1");
+        Vector3 pos = Speaker.transform.position;
+        Vector3 rot = Speaker.transform.eulerAngles;
+        float VerticalDivision = 360f / RayTracingResolution;
+        float HorizontalDivision = 360f / RayTracingResolution;
+        for (float i = StartPhi; i < EndPhi; i += HorizontalDivision)
+        {
+            for (float j = StartTheta; j < EndTheta; j += VerticalDivision)
+            {
+                float Theta = j;
+                float Phi = i;
+                if (Theta < EndTheta && Theta > StartTheta && Phi < EndPhi && Phi > StartPhi)
+                {
+                    const float Pi2 = 2 * Mathf.PI;
+                    float Theta360 = (Theta / 360f);
+                    float Phi360 = (Phi / 360f);
+                    const int R = 100;
+                    float ThetaAngle = Pi2 * (rot.x / 360f);
+                    float PhiAngle = Pi2 * (rot.y / 360f);
+                    float Pi2Theta360 = Pi2 * Theta360;
+                    float Pi2Phi360 = Pi2 * Phi360;
+                    float X = R * Mathf.Sin(ThetaAngle + Pi2Theta360) * Mathf.Cos(PhiAngle + Pi2Phi360);
+                    float Z = R * Mathf.Sin(ThetaAngle + Pi2Theta360) * Mathf.Sin(PhiAngle + Pi2Phi360);
+                    float Y = R * Mathf.Cos(ThetaAngle + Pi2Theta360);
+                    Physics.Raycast(pos, new Vector3(X, Y, Z), out RaycastHit hit);
+                    float SpeakerToWallDistance = Vector3.Magnitude(pos - hit.point);
+                    float WallToListenerDistance = Vector3.Magnitude(hit.point - Listener.transform.position);
+                    float DirectSoundDistance = Vector3.Magnitude(Speaker.transform.position - Listener.transform.position);
+                    float SWD = SpeakerToWallDistance + WallToListenerDistance - DirectSoundDistance;
+                    if (SWD < 340 * 0.05f)
+                    {
+                        NearWall += WallToListenerDistance;
+                        WallVectorSum += hit.point - Listener.transform.position;
+                        NumberOfERVector++;
+                    }
+                    SumDistance += Mathf.Abs(SWD);
+                    if (DrawRayTracingLine)
+                    {
+                        Debug.DrawRay(pos, hit.point - pos, Color.red);
+                        Debug.DrawRay(hit.point, Listener.transform.position - hit.point, Color.magenta);
+                    }
+                }
+            }
+        }
+        float VH = VerticalVectorN * HorizontalVectorN;
+        SumDistance /= VH;
+        NearWall /= NumberOfERVector;
+        WallVectorSum /= NumberOfERVector;
+        Vector3 ListenRotation = new Vector3(WallVectorSum.x*Mathf.Sin(Listener.transform.eulerAngles.y),WallVectorSum.y,WallVectorSum.y*Mathf.Cos(Listener.transform.eulerAngles.y));
+        //Debug.Log(string.Format("{0}ms : {1}m", ((SumDistance / 340) * 1000).ToString(), SumDistance));
+        Debug.Log(ListenRotation);
+        AudioMixer audioMixer = KsoriAudioSource.ReverbEffectMixer;
+        for (int i = 0; i < 9; i++)
+        {
+            float freq = 31.25f * Mathf.Pow(2, i);
+            audioMixer.SetFloat(freq.ToString() + "Hz Predelay", (SumDistance / 340f));
+        }
+        //audioMixer.SetFloat("ER Left", WallVectorSum.x);
+        //audioMixer.SetFloat("ER Right", WallVectorSum.x);
+    }
     // Update is called once per frame
     void Update()
     {
+        SoundRayTracing();
         if (IR.name != IRName || IR.length != IRLength || IR.channels != IRChannels || IR.frequency != IRSamplerate || IR.samples != IRSamples)
         {
             AnalyzeStart();
         }
-        if (OnOffsave != ReverbOn || ReverbLevelMemory != ReverbLevel)
+        if (OnOffsave != ReverbOn || ReverbLevelMemory != ReverbLevel || ERLevelMemory != EarlyReflectionLevel)
         {
             foreach (string hz in FreqDecayGaindB.Keys)
             {
-                AudioMixer.SetFloat(hz + "Hz Gain", ReverbOn ? FreqDecayGaindB[hz]+ReverbLevel : -80);
+                KsoriAudioSource.ReverbEffectMixer.SetFloat(hz + "Hz Gain", ReverbOn ? FreqDecayGaindB[hz]+ReverbLevel : -80);
             }
+            KsoriAudioSource.ReverbEffectMixer.SetFloat("ER Gain", ReverbOn ? EarlyReflectionLevel : -80);
             OnOffsave = ReverbOn;
+            ERLevelMemory = EarlyReflectionLevel;
             ReverbLevelMemory = ReverbLevel;
         }
     }
