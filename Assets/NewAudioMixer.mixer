@@ -1021,6 +1021,10 @@ AudioMixerController:
     name: 8000Hz
   - guid: adf2b81dae1c83f4aa0fd4decc2e3fd9
     name: 8000Hz Predelay
+  - guid: c0ff1743879a56947bab40fd249991f4
+    name: Left ER
+  - guid: 44dd02c306ead3343a7fdf875c8d7dc5
+    name: Right ER
   m_AudioMixerGroupViews:
   - guids:
     - e4c093a2fbd85be40834dcde42aa8ff8
@@ -1294,7 +1298,7 @@ AudioMixerSnapshotController:
     d7a03b58f8d9d6f40920026e7405d892: 0
     20eaea68db179c54d927cdd49c234208: 0.1
     517ecd682b7cce640875a12c63ef8e91: 2
-    15d3fe68dea02b844917fcb8863ea580: -0.10231405
+    15d3fe68dea02b844917fcb8863ea580: -80
     8f49b388a0a300043ad4a679eae3650f: 0
     aaf4758899066784683c22ac2cb94a53: 125
     cac1a298e6d2d514cab86c4219ee45b8: 2000
@@ -1386,7 +1390,7 @@ AudioMixerSnapshotController:
     196f5b9cce2c71642a3cddd72588d2e5: 20000
     fd65e4bc16d24214f9025e3fb16d6faf: 15
     4a18d1cc0585311459b6443afbdeeb5b: 16000
-    1c0c62cc396571841a8fca8d8b2cd4c7: -21.476906
+    1c0c62cc396571841a8fca8d8b2cd4c7: 0
     ad677ceca0b200c42b3707c7e1e5d892: 1
     edff01fc98e5e204c917b5765353e6da: 4000
     b9e5f3fcd6973b24cb1ce309d8377ca6: 20
