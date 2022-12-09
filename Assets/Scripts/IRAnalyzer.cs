@@ -15,24 +15,46 @@ public class IRAnalyzer : MonoBehaviour
     public GameObject Speaker = null;
     public AudioClip IR = null;
     public int TargetChannel = 0;
+
+    [Tooltip("리버브 온오프\n음장효과를 On/Off 스위치입니다.")]
     public bool ReverbOn = true;
 
+    [Tooltip("리버브 레벨\n음장효과의 크기를조정합니다. \n 이 크기를 높히면 음장효과가 부각되지만, 지나치게 높히면 비현실적으로 들립니다.")]
     [Range(-80, 40)]
     public float ReverbLevel;// = 0;
 
+    [Tooltip("초기반사음 레벨\n뮤지션이 소리를 내고 나서, 벽에 반사된 후 0.1초 이내로 청취자에게 도달하는 반사음의 크기를 조정합니다.\n초기반사음이 크면 뮤지션의 위치가 불분명해집니다.")]
     [Range(-80, 0)]
     public float EarlyReflectionLevel;// = -40;
 
+    [Tooltip("음장데이터의 분석 주파수\n음장데이터를 분석 시 주파수 분석 해상도를 조정합니다.\n높히면 리버브의 음색이 정밀해지지만 시간이 오래걸립니다.")]
     [Range(1, 3)]
     public int FreqResolution;// = 1;
 
+    [Tooltip("음장데이터의 분석 시정수\n음장데이터를 분석 시 시정수 분석 해상도를 조정합니다.\n높히면 리버브 지속시간이 정밀해지지만 시간이 오래걸립니다.")]
     [Range(1, 2)]
     public float TimeResolution;// = 1;
 
+    [Tooltip("음선 레이트레이싱의 해상도를 조정합니다.\n뮤지션과 청취자간의 소리 경로를 추적할 때 음선 방사각의 밀도를 조정합니다.\n이 밀도를 높히면 뮤지션의 소리와 리버브 음의 도달 시간 차이가 정밀해지지만\n많은 연산량이 요구됩니다.")]
     [Range(1, 6)]
     public float RayTracingResolution;// = 16;
 
+    [Tooltip("음선의 경로를 표시합니다.\n음선 경로를 모니터링하기 위한 시스템으로 디버깅 시에만 사용됩니다.")]
+    [Range(1, 6)]
     public bool DrawRayTracingLine = true;
+
+    [Tooltip("벽 반사 범위\n청취자가 벽에 가까이 있을 때 뮤지션의 소리가 벽에 반사되어 나오는 소리가 들리도록하는 거리를 정의합니다.\n너무 높히면 벽 반사 방향성이 흐릿해집니다.")]
+    [Range(1, 6)]
+    public float WallReflectionRange;
+
+    [Tooltip("배경 초기반사음과 벽 반사음의 비율\n청취자는 근접한 벽의 큰 반사음과 멀리 있는 벽의 작은 반사음을 더해 듣게됩니다. \n근접한 벽반사와 배경 초기반사음의 소리 크기의 비율을 조정합니다.")]
+    [Range(1, 6)]
+    public float WallReflectionRatio;
+
+    [Tooltip("초기반사음으로 취급할 음선의 정의를 조정합니다.\n초기반사음은 뮤지션의 소리가 전달 된 후 특정 시간 이내의 반사음을 뜻합니다.\n그 특정 시간을 몇 초로 할건지 정의합니다.")]
+    [Range(1, 6)]
+    public float ERTimeRangeDefine;
+
     float[] IRdata = null;
     float[][] IRArray = null;
     float[] SelectedIR = null;
@@ -369,7 +391,7 @@ public class IRAnalyzer : MonoBehaviour
                     float DirectSoundDistance = Vector3.Magnitude(ListenerPos - Speaker.transform.position);
                     float SWD = SpeakerToWallDistance + WallToListenerDistance - DirectSoundDistance;
                    
-                    if (SWD < (340 * 0.05f) && WallToListenerDistance < 2)
+                    if (SWD < (340 * 0.05f) && WallToListenerDistance < 5)
                     {
                         Vector2 LeftEar = new Vector2((-Listener.transform.right).x,(-Listener.transform.right).z);
                         Vector2 RightEar = new Vector2(Listener.transform.right.x, Listener.transform.right.z);
@@ -385,6 +407,11 @@ public class IRAnalyzer : MonoBehaviour
                         NumberOfERVector++;
                         Debug.DrawRay(pos, hit.point - pos, Color.red);
                         Debug.DrawRay(hit.point, ListenerPos - hit.point, Color.magenta);
+                    }
+                    else
+                    {
+                        //Debug.DrawRay(pos, hit.point - pos, Color.green);
+                        //Debug.DrawRay(hit.point, ListenerPos - hit.point, Color.cyan);
                     }
                     SumDistance += Mathf.Abs(SWD);
                     if (DrawRayTracingLine)
@@ -402,10 +429,11 @@ public class IRAnalyzer : MonoBehaviour
             float freq = 31.25f * Mathf.Pow(2, i);
             audioMixer.SetFloat(freq.ToString() + "Hz Predelay", (SumDistance / 340f));
         }
+        NumberOfERVector = Mathf.Max(NumberOfERVector,1);
         LeftEarER /= NumberOfERVector;
         RightEarER /= NumberOfERVector;
-        audioMixer.SetFloat("Left ER", (1+LeftEarER) / 2);
-        audioMixer.SetFloat("Right ER", (1+RightEarER) / 2);
+        audioMixer.SetFloat("Left ER", 0.2f + (LeftEarER * 0.8f));
+        audioMixer.SetFloat("Right ER", 0.2f + (RightEarER * 0.8f));
         Debug.Log(string.Format("{0} {1}",LeftEarER,RightEarER));
         Debug.DrawRay(Listener.transform.position, -Listener.transform.right, Color.green);
         Debug.DrawRay(Listener.transform.position, Listener.transform.right, Color.red);
